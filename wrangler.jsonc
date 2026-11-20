@@ -1,0 +1,11 @@
+{
+  "name": "my-yt-player",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-19",
+  "cache": { "enabled": true },
+  "assets": {
+    "directory": "./",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  }
+}
