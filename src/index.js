@@ -76,7 +76,7 @@ async function getTgFileUrl(fileId, botToken) {
 
   const res = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${encodeURIComponent(fileId)}`);
   const data = await res.json();
-  if (!data.ok) throw new Error("getFile error");
+  if (!data.ok) throw new Error(data.description || "Telegram getFile failed");
 
   const dlUrl = `https://api.telegram.org/file/bot${botToken}/${data.result.file_path}`;
   pathCache.set(key, { url: dlUrl, exp: now + 50 * 60 * 1000 });
@@ -101,13 +101,17 @@ function renderApp(catalog, activeItem) {
   .player{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;user-select:none;box-shadow:0 20px 50px rgba(0,0,0,.65)}
   .player:fullscreen{border-radius:0}
   video{width:100%;height:100%;display:block;object-fit:contain;background:#000}
-  .tap-flash{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);width:68px;height:68px;border-radius:50%;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
+  .center-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:68px;height:48px;border-radius:14px;background:rgba(255,0,51,.92);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:8;transition:transform .15s,background .15s}
+  .center-play:hover{transform:translate(-50%,-50%) scale(1.06);background:#ff0033}
+  .center-play svg{width:30px;height:30px;fill:#fff}
+  .tap-flash{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.7);width:68px;height:68px;border-radius:50%;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:7}
   .tap-flash.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
-  .seek-ripple{position:absolute;top:0;bottom:0;width:36%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%);opacity:0;pointer-events:none;transition:opacity .25s}
+  .tap-flash svg{width:32px;height:32px;fill:#fff}
+  .seek-ripple{position:absolute;top:0;bottom:0;width:36%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%);opacity:0;pointer-events:none;transition:opacity .25s;z-index:7}
   .seek-ripple.left{left:0;border-radius:0 50% 50% 0}
   .seek-ripple.right{right:0;border-radius:50% 0 0 50%}
   .seek-ripple.show{opacity:1}
-  .spinner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;border:4px solid rgba(255,255,255,.22);border-top-color:#fff;border-radius:50%;animation:spin .75s linear infinite;display:none;pointer-events:none}
+  .spinner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;border:4px solid rgba(255,255,255,.22);border-top-color:#fff;border-radius:50%;animation:spin .75s linear infinite;display:none;pointer-events:none;z-index:9}
   @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
   .controls{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.65) 40%,rgba(0,0,0,.9));padding:36px 14px 10px;transition:opacity .22s;z-index:10}
   .controls.hide{opacity:0;pointer-events:none}
@@ -174,6 +178,7 @@ function renderApp(catalog, activeItem) {
 <div class="page">
   <div class="player" id="pbox">
     <video id="video" playsinline></video>
+    <button class="center-play" id="bigPlay" onclick="togglePlay()" aria-label="Play Video"></button>
     <div class="seek-ripple left" id="ripL">-10s</div>
     <div class="seek-ripple right" id="ripR">+10s</div>
     <div class="tap-flash" id="tapFlash"></div>
@@ -286,6 +291,7 @@ const pbox = document.getElementById("pbox");
 const ctrls = document.getElementById("ctrls");
 const spin = document.getElementById("spin");
 const playBtn = document.getElementById("playBtn");
+const bigPlay = document.getElementById("bigPlay");
 const muteBtn = document.getElementById("muteBtn");
 const fsBtn = document.getElementById("fsBtn");
 const timeTxt = document.getElementById("timeTxt");
@@ -299,6 +305,7 @@ const hdTag = document.getElementById("hdTag");
 const specsRow = document.getElementById("specsRow");
 
 playBtn.innerHTML = SVG.play;
+bigPlay.innerHTML = SVG.play;
 muteBtn.innerHTML = SVG.vol;
 fsBtn.innerHTML = SVG.fs;
 document.getElementById("vTitle").textContent = ITEM.title;
@@ -364,10 +371,10 @@ function renderMenu(){
 
   if (menuView === "main") {
     ytMenu.innerHTML =
-      '<button class="ym-item" onclick="openSub(\'speed\',event)"><span class="ym-left">' + SVG.speed + ' Playback speed</span><span class="ym-right">' + (video.playbackRate===1?"Normal":video.playbackRate+"x") + SVG.chevR + '</span></button>' +
-      '<button class="ym-item" onclick="openSub(\'quality\',event)"><span class="ym-left">' + SVG.tune + ' Quality</span><span class="ym-right">' + qLabel + SVG.chevR + '</span></button>';
+      '<button class="ym-item" onclick="openSub(&apos;speed&apos;,event)"><span class="ym-left">' + SVG.speed + ' Playback speed</span><span class="ym-right">' + (video.playbackRate===1?"Normal":video.playbackRate+"x") + SVG.chevR + '</span></button>' +
+      '<button class="ym-item" onclick="openSub(&apos;quality&apos;,event)"><span class="ym-left">' + SVG.tune + ' Quality</span><span class="ym-right">' + qLabel + SVG.chevR + '</span></button>';
   } else if (menuView === "quality") {
-    let html = '<div class="ym-head" onclick="openSub(\'main\',event)">' + SVG.chevL + ' Quality</div><div class="ym-list">';
+    let html = '<div class="ym-head" onclick="openSub(&apos;main&apos;,event)">' + SVG.chevL + ' Quality</div><div class="ym-list">';
     html += '<button class="ym-item" onclick="pickQuality(-1)"><span>Auto (Internet Speed)</span><span>' + (!manualMode ? SVG.check : "") + '</span></button>';
     const sorted = hls.levels.map((l,i)=>({l,i})).sort((a,b)=>b.l.height - a.l.height);
     sorted.forEach(({l,i}) => {
@@ -376,7 +383,7 @@ function renderMenu(){
     });
     ytMenu.innerHTML = html + '</div>';
   } else if (menuView === "speed") {
-    let html = '<div class="ym-head" onclick="openSub(\'main\',event)">' + SVG.chevL + ' Playback speed</div><div class="ym-list">';
+    let html = '<div class="ym-head" onclick="openSub(&apos;main&apos;,event)">' + SVG.chevL + ' Playback speed</div><div class="ym-list">';
     [0.5, 0.75, 1, 1.25, 1.5, 2].forEach(sp => {
       html += '<button class="ym-item" onclick="pickSpeed(' + sp + ')"><span>' + (sp===1?"Normal":sp+"x") + '</span><span>' + (video.playbackRate===sp ? SVG.check : "") + '</span></button>';
     });
@@ -415,14 +422,16 @@ if (Hls.isSupported()) {
   let retries = 0;
   hls.on(Hls.Events.ERROR, (_, data) => {
     if (data.fatal) {
-      if (data.type === Hls.ErrorTypes.NETWORK_ERROR && retries < 5) { retries++; hls.startLoad(); }
+      const code = data.response ? (" (HTTP " + data.response.code + ": " + (data.response.text || "") + ")") : "";
+      specsRow.innerHTML = '<span class="pill" style="color:#f87171">Error: ' + data.details + code + '</span>';
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR && retries < 3) { retries++; hls.startLoad(); }
       else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
     }
   });
 }
 
 function togglePlay(){
-  if (video.paused) { video.play(); flashTap(SVG.play); }
+  if (video.paused) { video.play().catch(()=>{}); flashTap(SVG.play); }
   else { video.pause(); flashTap(SVG.pause); }
 }
 function flashTap(svgHtml){
@@ -438,8 +447,8 @@ function toggleFS(){
 }
 
 document.addEventListener("fullscreenchange", () => { fsBtn.innerHTML = document.fullscreenElement ? SVG.fsExit : SVG.fs; });
-video.addEventListener("play", () => playBtn.innerHTML = SVG.pause);
-video.addEventListener("pause", () => playBtn.innerHTML = SVG.play);
+video.addEventListener("play", () => { playBtn.innerHTML = SVG.pause; bigPlay.style.display = "none"; });
+video.addEventListener("pause", () => { playBtn.innerHTML = SVG.play; bigPlay.style.display = "flex"; });
 video.addEventListener("waiting", () => spin.style.display = "block");
 video.addEventListener("playing", () => spin.style.display = "none");
 video.addEventListener("canplay", () => spin.style.display = "none");
@@ -772,7 +781,7 @@ export default {
 
     if (url.pathname === "/") {
       const txt = await getSiteText("/videos.json", url.origin, env);
-      if (!txt) return new Response("Catalog missing (site_upload.zip upload karein)", { status: 500 });
+      if (!txt) return new Response("Catalog missing", { status: 500 });
       const catalog = JSON.parse(txt);
       const vid = url.searchParams.get("v") || (catalog[0] && catalog[0].id);
       const item = catalog.find(x => x.id === vid) || catalog[0];
@@ -801,19 +810,24 @@ export default {
     const tokens = getBotTokens(env);
 
     if (url.pathname === "/c") {
+      if (!tokens.length) return new Response("BOT_TOKENS secret missing", { status: 500, headers: cors });
       const id = url.searchParams.get("id");
       const b = parseInt(url.searchParams.get("b") || "0", 10);
       const token = tokens[b] || tokens[0];
-      if (!id || !token) return new Response("Bad request", { status: 400 });
+      if (!id || !token) return new Response("Bad request", { status: 400, headers: cors });
 
-      const tgUrl = await getTgFileUrl(id, token);
-      const tgRes = await fetch(tgUrl);
-      if (!tgRes.ok) return new Response("Upstream error", { status: 502 });
+      try {
+        const tgUrl = await getTgFileUrl(id, token);
+        const tgRes = await fetch(tgUrl);
+        if (!tgRes.ok) return new Response("Upstream HTTP " + tgRes.status, { status: 502, headers: cors });
 
-      return new Response(tgRes.body, {
-        status: 200,
-        headers: { ...cors, "Content-Type": "video/mp2t", "Cache-Control": "public, max-age=86400" },
-      });
+        return new Response(tgRes.body, {
+          status: 200,
+          headers: { ...cors, "Content-Type": "video/mp2t", "Cache-Control": "public, max-age=86400" },
+        });
+      } catch (err) {
+        return new Response(err.message || "Error", { status: 502, headers: cors });
+      }
     }
 
     if (url.pathname === "/dl") {
